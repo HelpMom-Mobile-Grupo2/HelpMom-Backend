@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -16,7 +16,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\BackendMoviles.Application\BackendMoviles.Application.csproj" />
-    <ProjectReference Include="..\..\src\BackendMoviles.Infrastructure\BackendMoviles.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\BackendMoviles.Domain\BackendMoviles.Domain.csproj" />
+	<ProjectReference Include="..\..\src\BackendMoviles.Application\BackendMoviles.Application.csproj" />
+	<ProjectReference Include="..\..\src\BackendMoviles.Infrastructure\BackendMoviles.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
