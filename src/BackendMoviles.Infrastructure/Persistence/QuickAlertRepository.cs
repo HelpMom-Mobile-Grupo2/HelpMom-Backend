@@ -19,4 +19,18 @@ public sealed class QuickAlertRepository(HelpMomDbContext context)
 
         return await query.OrderByDescending(alert => alert.CreatedAt).ToArrayAsync(cancellationToken);
     }
+
+    public Task<bool> HasPendingSinceAsync(
+        Guid familyGroupId,
+        QuickAlertType type,
+        string message,
+        DateTimeOffset since,
+        CancellationToken cancellationToken = default) =>
+        Entities.AnyAsync(
+            alert => alert.FamilyGroupId == familyGroupId
+                && alert.Type == type
+                && alert.Status == QuickAlertStatus.Pending
+                && alert.Message == message
+                && alert.CreatedAt >= since,
+            cancellationToken);
 }

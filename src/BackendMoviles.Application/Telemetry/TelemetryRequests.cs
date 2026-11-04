@@ -1,4 +1,5 @@
 using BackendMoviles.Application.Common;
+using BackendMoviles.Application.Companion;
 using BackendMoviles.Domain.Common;
 using BackendMoviles.Domain.Telemetry;
 using FluentValidation;
@@ -22,7 +23,10 @@ public sealed class AddTelemetryValidator : AbstractValidator<AddTelemetryComman
     }
 }
 
-public sealed class AddTelemetryHandler(IHealthTelemetryRepository telemetry, IUnitOfWork unitOfWork)
+public sealed class AddTelemetryHandler(
+    IHealthTelemetryRepository telemetry,
+    IUnitOfWork unitOfWork,
+    IPublisher publisher)
     : IRequestHandler<AddTelemetryCommand, TelemetryDto>
 {
     public async Task<TelemetryDto> Handle(AddTelemetryCommand request, CancellationToken cancellationToken)
@@ -34,6 +38,14 @@ public sealed class AddTelemetryHandler(IHealthTelemetryRepository telemetry, IU
             request.MeasuredAt ?? DateTimeOffset.UtcNow);
         await telemetry.AddAsync(measurement, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (measurement.Semaphore.Light == HealthLight.Red)
+        {
+            await publisher.Publish(
+                new EmergencyDetected(request.MotherUserId, EmergencyReasons.RedTelemetry),
+                cancellationToken);
+        }
+
         return measurement.ToDto();
     }
 }
