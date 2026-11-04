@@ -9,7 +9,7 @@ namespace BackendMoviles.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Mother")]
 public sealed class PregnancyController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
