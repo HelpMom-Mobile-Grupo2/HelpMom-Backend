@@ -15,13 +15,29 @@ namespace BackendMoviles.Infrastructure;
 
 public static class DependencyInjection
 {
+    public const string DefaultSqliteConnection = "Data Source=helpmom.db";
+
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var databaseName = configuration["Database:Name"];
-        services.AddDbContext<HelpMomDbContext>(options =>
-            options.UseInMemoryDatabase(string.IsNullOrWhiteSpace(databaseName) ? "HelpMomDb" : databaseName));
+        var provider = configuration["Database:Provider"];
+        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("InMemory", StringComparison.OrdinalIgnoreCase))
+        {
+            var databaseName = configuration["Database:Name"];
+            services.AddDbContext<HelpMomDbContext>(options =>
+                options.UseInMemoryDatabase(string.IsNullOrWhiteSpace(databaseName) ? "HelpMomDb" : databaseName));
+        }
+        else if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            var connectionString = configuration["Database:ConnectionString"];
+            services.AddDbContext<HelpMomDbContext>(options =>
+                options.UseSqlite(string.IsNullOrWhiteSpace(connectionString) ? DefaultSqliteConnection : connectionString));
+        }
+        else
+        {
+            throw new InvalidOperationException("Database:Provider must be Sqlite or InMemory.");
+        }
 
         services.Configure<JwtTokenOptions>(configuration.GetSection("Jwt"));
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<HelpMomDbContext>());

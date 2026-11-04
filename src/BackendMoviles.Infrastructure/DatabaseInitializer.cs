@@ -6,11 +6,19 @@ namespace BackendMoviles.Infrastructure;
 
 public static class DatabaseInitializer
 {
-    // Creates the schema and applies the seed data (daily tips) declared with HasData.
+    // Applies pending migrations on relational providers (SQLite) or creates the in-memory store.
+    // Both paths also insert the daily tips declared with HasData.
     public static async Task InitializeDatabaseAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<HelpMomDbContext>();
-        await context.Database.EnsureCreatedAsync(cancellationToken);
+        if (context.Database.IsRelational())
+        {
+            await context.Database.MigrateAsync(cancellationToken);
+        }
+        else
+        {
+            await context.Database.EnsureCreatedAsync(cancellationToken);
+        }
     }
 }

@@ -5,6 +5,7 @@ using BackendMoviles.Domain.Pregnancy;
 using BackendMoviles.Domain.Telemetry;
 using BackendMoviles.Domain.Triage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BackendMoviles.Infrastructure.Persistence;
 
@@ -25,6 +26,15 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
     {
         ArgumentNullException.ThrowIfNull(entity);
         base.Add(entity);
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        if (Database.IsSqlite())
+        {
+            // SQLite cannot order or compare DateTimeOffset columns, so they are stored as sortable numbers.
+            configurationBuilder.Properties<DateTimeOffset>().HaveConversion<DateTimeOffsetToBinaryConverter>();
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
