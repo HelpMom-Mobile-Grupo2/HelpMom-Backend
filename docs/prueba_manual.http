@@ -1,0 +1,125 @@
+# Prueba manual del flujo completo de HelpMom (extensión REST Client de VS Code).
+# 1. Levanta la API: dotnet run --project src/BackendMoviles.Api/BackendMoviles.Api.csproj --launch-profile http
+# 2. Ejecuta las peticiones en orden con "Send Request". Cada una reutiliza tokens e ids de las anteriores.
+# Los correos llevan {{$timestamp}}, así que el flujo se puede repetir sin borrar la base.
+
+@baseUrl = http://localhost:61614
+@password = una-clave-segura-123
+
+@motherToken = {{registerMother.response.body.$.accessToken}}
+@partnerToken = {{registerPartner.response.body.$.accessToken}}
+@invitationCode = {{createInvitation.response.body.$.code}}
+@alertId = {{sendAlert.response.body.$.id}}
+
+### 1. Registrar a la madre (rol Mother por defecto, crea su grupo familiar)
+# @name registerMother
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "daniela-{{$timestamp}}@example.test",
+  "fullName": "Daniela Gómez",
+  "password": "{{password}}"
+}
+
+### 2. La madre crea su embarazo (FUM y FPP)
+# @name createPregnancy
+POST {{baseUrl}}/api/pregnancy
+Authorization: Bearer {{motherToken}}
+Content-Type: application/json
+
+{
+  "lastMenstrualPeriod": "2026-05-10",
+  "dueDate": "2027-02-14"
+}
+
+### 3. La madre crea una invitación (código HM-XXXX que vence en 24 h)
+# @name createInvitation
+POST {{baseUrl}}/api/family/invitations
+Authorization: Bearer {{motherToken}}
+
+### 4. Registrar al acompañante (rol Partner, sin grupo todavía)
+# @name registerPartner
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "carlos-{{$timestamp}}@example.test",
+  "fullName": "Carlos Ruiz",
+  "password": "{{password}}",
+  "role": "Partner"
+}
+
+### 5. El acompañante se vincula con el código
+# @name join
+POST {{baseUrl}}/api/family/join
+Authorization: Bearer {{partnerToken}}
+Content-Type: application/json
+
+{
+  "code": "{{invitationCode}}"
+}
+
+### 6. La madre envía una alerta "Pasa la Voz" (type 2 = cansancio o dolor)
+# @name sendAlert
+POST {{baseUrl}}/api/alerts
+Authorization: Bearer {{motherToken}}
+Content-Type: application/json
+
+{
+  "type": 2,
+  "message": "Siento mucho cansancio y molestia lumbar, ¿puedes ayudarme con la cena hoy?"
+}
+
+### 7a. El acompañante ve sus alertas pendientes
+GET {{baseUrl}}/api/alerts?status=pending
+Authorization: Bearer {{partnerToken}}
+
+### 7b. El acompañante responde la alerta (response 1 = voy en camino)
+POST {{baseUrl}}/api/alerts/{{alertId}}/respond
+Authorization: Bearer {{partnerToken}}
+Content-Type: application/json
+
+{
+  "response": 1
+}
+
+### 8. La madre ve la respuesta (status 2, response 1, respondedAt)
+GET {{baseUrl}}/api/alerts?status=all
+Authorization: Bearer {{motherToken}}
+
+### 9. La madre registra una medición roja (FCF 190 > 180)
+POST {{baseUrl}}/api/telemetry
+Authorization: Bearer {{motherToken}}
+Content-Type: application/json
+
+{
+  "fetalHeartRateBpm": 190,
+  "temperatureCelsius": 36.8
+}
+
+### 10. El acompañante ve la alerta SOS automática (type 4, "Alerta automática: ...")
+# Si repites el paso 9 antes de 10 minutos, no se crea una segunda SOS.
+GET {{baseUrl}}/api/alerts?status=pending
+Authorization: Bearer {{partnerToken}}
+
+### 11. El acompañante consulta el resumen de la gestante (sin FCF, temperatura ni síntomas)
+GET {{baseUrl}}/api/companion/summary
+Authorization: Bearer {{partnerToken}}
+
+### Extra: tips del día del acompañante
+# @name todayTips
+GET {{baseUrl}}/api/companion/tips/today
+Authorization: Bearer {{partnerToken}}
+
+### Extra: marcar el primer tip como hecho (204, idempotente)
+POST {{baseUrl}}/api/companion/tips/{{todayTips.response.body.$[0].id}}/done
+Authorization: Bearer {{partnerToken}}
+
+### Extra: grupo familiar con nombres y roles (1 = Mother, 3 = Partner)
+GET {{baseUrl}}/api/family
+Authorization: Bearer {{partnerToken}}
+
+### Extra: un acompañante no puede ver la telemetría (403)
+GET {{baseUrl}}/api/telemetry/status
+Authorization: Bearer {{partnerToken}}

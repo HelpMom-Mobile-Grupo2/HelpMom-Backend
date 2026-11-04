@@ -25,6 +25,7 @@ public sealed class EndToEndApplicationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["Database:Provider"] = "InMemory",
                 ["Database:Name"] = $"HelpMomTests-{Guid.NewGuid():N}",
                 ["Jwt:Secret"] = "local-test-secret-that-is-at-least-32-bytes-long",
                 ["Jwt:Issuer"] = "HelpMomTests",

@@ -8,3 +8,11 @@
 *.sln.docstates
 TestResults/
 *.log
+
+# SQLite local database
+*.db
+*.db-shm
+*.db-wal
+
+# Working prompt, not part of the repo
+docs/03_prompt_backend_completo.md

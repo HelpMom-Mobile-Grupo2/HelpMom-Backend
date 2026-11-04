@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BackendMoviles.Application.Common;
 using BackendMoviles.Application.Pregnancy;
 using BackendMoviles.Domain.Pregnancy;
 using MediatR;
@@ -8,13 +9,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace BackendMoviles.Api.Controllers;
 
 [ApiController]
+[Tags("Pregnancy")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Mother")]
 public sealed class PregnancyController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(PregnancyDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(CreatePregnancyRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var motherUserId))
@@ -29,7 +33,7 @@ public sealed class PregnancyController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyCollection<PregnancyDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var motherUserId))
@@ -41,8 +45,8 @@ public sealed class PregnancyController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(PregnancyDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var motherUserId))
@@ -54,10 +58,54 @@ public sealed class PregnancyController(IMediator mediator) : ControllerBase
         return pregnancy is null || pregnancy.MotherUserId != motherUserId ? NotFound() : Ok(pregnancy);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(PregnancyDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateDates(
+        Guid id,
+        UpdatePregnancyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        var pregnancy = await mediator.Send(new GetPregnancyRecordQuery(id), cancellationToken);
+        if (pregnancy is null || pregnancy.MotherUserId != motherUserId)
+        {
+            return NotFound();
+        }
+
+        return Ok(await mediator.Send(
+            new UpdatePregnancyDatesCommand(id, request.LastMenstrualPeriod, request.DueDate),
+            cancellationToken));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        var pregnancy = await mediator.Send(new GetPregnancyRecordQuery(id), cancellationToken);
+        if (pregnancy is null || pregnancy.MotherUserId != motherUserId)
+        {
+            return NotFound();
+        }
+
+        return await mediator.Send(new DeletePregnancyRecordCommand(id), cancellationToken) ? NoContent() : NotFound();
+    }
+
     [HttpPost("{pregnancyId:guid}/symptoms")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(SymptomDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RecordSymptom(
         Guid pregnancyId,
         RecordSymptomRequest request,
@@ -88,4 +136,5 @@ public sealed class PregnancyController(IMediator mediator) : ControllerBase
 }
 
 public sealed record CreatePregnancyRequest(DateOnly LastMenstrualPeriod, DateOnly DueDate);
+public sealed record UpdatePregnancyRequest(DateOnly LastMenstrualPeriod, DateOnly DueDate);
 public sealed record RecordSymptomRequest(string Description, SymptomSeverity Severity, DateTimeOffset? OccurredAt = null);

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BackendMoviles.Application.Common;
 using BackendMoviles.Application.Triage;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -7,13 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace BackendMoviles.Api.Controllers;
 
 [ApiController]
+[Tags("Triage")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Mother")]
 public sealed class TriageController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(TriageConversationDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> StartConversation(
         SendTriageMessageRequest request,
         CancellationToken cancellationToken)
@@ -29,10 +33,22 @@ public sealed class TriageController(IMediator mediator) : ControllerBase
         return CreatedAtAction(nameof(GetConversation), new { conversationId = result.Id }, result);
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyCollection<TriageConversationSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetConversations(CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await mediator.Send(new GetTriageConversationsQuery(motherUserId), cancellationToken));
+    }
+
     [HttpPost("{conversationId:guid}/messages")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(TriageConversationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SendMessage(
         Guid conversationId,
         SendTriageMessageRequest request,
@@ -50,8 +66,8 @@ public sealed class TriageController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("{conversationId:guid}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(TriageConversationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetConversation(Guid conversationId, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var motherUserId))

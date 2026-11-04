@@ -28,6 +28,10 @@ public sealed class FamilyGroup : Entity
         return new FamilyGroup(Guid.NewGuid(), name.Trim(), motherUserId);
     }
 
+    public Guid GetMotherUserId() => _members.Single(member => member.Role == FamilyRole.Mother).UserId;
+
+    public FamilyMember? GetPartner() => _members.FirstOrDefault(member => member.Role == FamilyRole.Partner);
+
     public FamilyMember AddMember(Guid userId, FamilyRole role)
     {
         if (userId == Guid.Empty)

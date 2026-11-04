@@ -68,6 +68,8 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+await app.Services.InitializeDatabaseAsync();
+
 app.UseMiddleware<ApiExceptionMiddleware>();
 app.UseCors();
 app.UseSwagger();
@@ -77,3 +79,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

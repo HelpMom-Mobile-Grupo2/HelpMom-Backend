@@ -5,7 +5,30 @@ using MediatR;
 
 namespace BackendMoviles.Application.Identity;
 
-public sealed record RegisterUserCommand(string Email, string FullName, string Password) : IRequest<AuthResponse>;
+public sealed record RegisterUserCommand(string Email, string FullName, string Password, string? Role = null)
+    : IRequest<AuthResponse>;
+
+public static class RegistrationRoles
+{
+    // Doctor accounts are not self-registered, so only these two roles are accepted.
+    public static bool TryParse(string? value, out FamilyRole role)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Trim().Equals(nameof(FamilyRole.Mother), StringComparison.OrdinalIgnoreCase))
+        {
+            role = FamilyRole.Mother;
+            return true;
+        }
+
+        if (value.Trim().Equals(nameof(FamilyRole.Partner), StringComparison.OrdinalIgnoreCase))
+        {
+            role = FamilyRole.Partner;
+            return true;
+        }
+
+        role = default;
+        return false;
+    }
+}
 
 public sealed class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
 {
@@ -14,6 +37,9 @@ public sealed class RegisterUserValidator : AbstractValidator<RegisterUserComman
         RuleFor(request => request.Email).NotEmpty().EmailAddress().MaximumLength(254);
         RuleFor(request => request.FullName).NotEmpty().MaximumLength(160);
         RuleFor(request => request.Password).MinimumLength(10).MaximumLength(128);
+        RuleFor(request => request.Role)
+            .Must(role => RegistrationRoles.TryParse(role, out _))
+            .WithMessage("El rol debe ser Mother o Partner.");
     }
 }
 
@@ -33,13 +59,21 @@ public sealed class RegisterUserHandler(
             throw new InvalidOperationException("Ya existe una cuenta con ese correo.");
         }
 
-        var user = User.Create(email, request.FullName, passwords.Hash(request.Password));
-        var family = FamilyGroup.Create($"Familia de {user.FullName}", user.Id);
+        RegistrationRoles.TryParse(request.Role, out var role);
+        var user = User.Create(email, request.FullName, passwords.Hash(request.Password), role);
         await users.AddAsync(user, cancellationToken);
-        await families.AddAsync(family, cancellationToken);
+
+        // Only mothers own a family group; partners join one later with an invitation code.
+        FamilyGroup? family = null;
+        if (role == FamilyRole.Mother)
+        {
+            family = FamilyGroup.Create($"Familia de {user.FullName}", user.Id);
+            await families.AddAsync(family, cancellationToken);
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(user.ToDto(), family.Id, FamilyRole.Mother.ToString(), tokens.CreateToken(user, FamilyRole.Mother));
+        return new AuthResponse(user.ToDto(), family?.Id, role.ToString(), tokens.CreateToken(user, role));
     }
 }
 
@@ -69,8 +103,8 @@ public sealed class LoginHandler(
             throw new UnauthorizedAccessException("Correo o contraseña incorrectos.");
         }
 
-        var role = await families.GetRoleForUserAsync(user.Id, cancellationToken);
-        return new AuthResponse(user.ToDto(), null, role?.ToString(), tokens.CreateToken(user, role));
+        var family = await families.GetByMemberAsync(user.Id, user.Role, cancellationToken);
+        return new AuthResponse(user.ToDto(), family?.Id, user.Role.ToString(), tokens.CreateToken(user, user.Role));
     }
 }
 
@@ -104,6 +138,7 @@ public sealed class AddFamilyMemberHandler(
         var member = family.AddMember(request.UserId, request.Role);
         unitOfWork.Add(member);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return family.ToDto();
+        var members = await users.GetByIdsAsync(family.Members.Select(item => item.UserId), cancellationToken);
+        return family.ToDto(members);
     }
 }

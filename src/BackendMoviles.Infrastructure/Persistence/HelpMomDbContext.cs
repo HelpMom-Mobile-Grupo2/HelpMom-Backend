@@ -1,9 +1,11 @@
 using BackendMoviles.Domain.Common;
+using BackendMoviles.Domain.Companion;
 using BackendMoviles.Domain.Identity;
 using BackendMoviles.Domain.Pregnancy;
 using BackendMoviles.Domain.Telemetry;
 using BackendMoviles.Domain.Triage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BackendMoviles.Infrastructure.Persistence;
 
@@ -12,14 +14,27 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<FamilyGroup> FamilyGroups => Set<FamilyGroup>();
+    public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
     public DbSet<PregnancyRecord> PregnancyRecords => Set<PregnancyRecord>();
     public DbSet<HealthTelemetry> HealthTelemetry => Set<HealthTelemetry>();
     public DbSet<TriageConversation> TriageConversations => Set<TriageConversation>();
+    public DbSet<QuickAlert> QuickAlerts => Set<QuickAlert>();
+    public DbSet<DailyTip> DailyTips => Set<DailyTip>();
+    public DbSet<TipCompletion> TipCompletions => Set<TipCompletion>();
 
     public void Add(Entity entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
         base.Add(entity);
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        if (Database.IsSqlite())
+        {
+            // SQLite cannot order or compare DateTimeOffset columns, so they are stored as sortable numbers.
+            configurationBuilder.Properties<DateTimeOffset>().HaveConversion<DateTimeOffsetToBinaryConverter>();
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -54,6 +69,17 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
             builder.HasKey(member => member.Id);
             builder.Property<Guid>("FamilyGroupId").IsRequired();
             builder.HasIndex("FamilyGroupId", nameof(FamilyMember.UserId)).IsUnique();
+        });
+
+        modelBuilder.Entity<FamilyInvitation>(builder =>
+        {
+            builder.HasKey(invitation => invitation.Id);
+            builder.Property(invitation => invitation.Code).HasMaxLength(7).IsRequired();
+            builder.HasIndex(invitation => invitation.Code);
+            builder.HasOne<FamilyGroup>()
+                .WithMany()
+                .HasForeignKey(invitation => invitation.FamilyGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PregnancyRecord>(builder =>
@@ -107,6 +133,35 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
             builder.HasKey(message => message.Id);
             builder.Property<Guid>("TriageConversationId").IsRequired();
             builder.Property(message => message.Content).HasMaxLength(4000).IsRequired();
+        });
+
+        modelBuilder.Entity<QuickAlert>(builder =>
+        {
+            builder.HasKey(alert => alert.Id);
+            builder.Property(alert => alert.Message).HasMaxLength(QuickAlert.MaxMessageLength).IsRequired();
+            builder.HasIndex(alert => new { alert.FamilyGroupId, alert.CreatedAt });
+            builder.HasOne<FamilyGroup>()
+                .WithMany()
+                .HasForeignKey(alert => alert.FamilyGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DailyTip>(builder =>
+        {
+            builder.HasKey(tip => tip.Id);
+            builder.Property(tip => tip.Title).HasMaxLength(160).IsRequired();
+            builder.Property(tip => tip.Body).HasMaxLength(1000).IsRequired();
+            builder.HasData(DailyTipSeed.Tips);
+        });
+
+        modelBuilder.Entity<TipCompletion>(builder =>
+        {
+            builder.HasKey(completion => completion.Id);
+            builder.HasIndex(completion => new { completion.TipId, completion.PartnerUserId, completion.Date }).IsUnique();
+            builder.HasOne<DailyTip>()
+                .WithMany()
+                .HasForeignKey(completion => completion.TipId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -1,3 +1,4 @@
+using BackendMoviles.Domain.Companion;
 using BackendMoviles.Domain.Identity;
 using BackendMoviles.Domain.Pregnancy;
 using BackendMoviles.Domain.Telemetry;
@@ -18,8 +19,10 @@ public interface IAccessTokenService
 
 public sealed record UserDto(Guid Id, string Email, string FullName, bool IsActive);
 public sealed record AuthResponse(UserDto User, Guid? FamilyGroupId, string? Role, string AccessToken);
-public sealed record FamilyMemberDto(Guid UserId, FamilyRole Role, DateTimeOffset JoinedAt);
+public sealed record FamilyMemberDto(Guid UserId, string FullName, FamilyRole Role, DateTimeOffset JoinedAt);
 public sealed record FamilyGroupDto(Guid Id, string Name, IReadOnlyCollection<FamilyMemberDto> Members);
+public sealed record FamilyInvitationDto(string Code, DateTimeOffset ExpiresAt);
+public sealed record JoinFamilyDto(Guid FamilyGroupId, string MotherName);
 public sealed record SymptomDto(Guid Id, string Description, SymptomSeverity Severity, DateTimeOffset OccurredAt);
 public sealed record PregnancyDto(
     Guid Id,
@@ -37,6 +40,23 @@ public sealed record TelemetryDto(
     DateTimeOffset MeasuredAt,
     HealthLight HealthLight,
     string HealthSummary);
+// Partner-facing view of the mother: deliberately carries no raw clinical values or symptoms.
+public sealed record CompanionSummaryDto(
+    string MotherName,
+    int? GestationalWeeks,
+    int? GestationalDays,
+    HealthLight? HealthLight,
+    string? HealthSummary,
+    DateTimeOffset? MeasuredAt);
+public sealed record QuickAlertDto(
+    Guid Id,
+    QuickAlertType Type,
+    string Message,
+    DateTimeOffset CreatedAt,
+    QuickAlertStatus Status,
+    QuickAlertResponse? Response,
+    DateTimeOffset? RespondedAt);
+public sealed record DailyTipDto(Guid Id, string Title, string Body, bool Done);
 public sealed record TriageMessageDto(Guid Id, MessageAuthor Author, string Content, DateTimeOffset SentAt);
 public sealed record TriageConversationDto(
     Guid Id,
@@ -46,14 +66,31 @@ public sealed record TriageConversationDto(
     TriageUrgency? Urgency,
     string? Guidance);
 
+public sealed record TriageConversationSummaryDto(
+    Guid Id,
+    DateTimeOffset CreatedAt,
+    TriageUrgency? Urgency,
+    string? LastMessage);
+
 public static class DtoMapper
 {
     public static UserDto ToDto(this User user) => new(user.Id, user.Email.Value, user.FullName, user.IsActive);
 
-    public static FamilyGroupDto ToDto(this FamilyGroup group) => new(
-        group.Id,
-        group.Name,
-        group.Members.Select(member => new FamilyMemberDto(member.UserId, member.Role, member.JoinedAt)).ToArray());
+    public static FamilyGroupDto ToDto(this FamilyGroup group, IEnumerable<User> members)
+    {
+        var names = members.ToDictionary(user => user.Id, user => user.FullName);
+        return new FamilyGroupDto(
+            group.Id,
+            group.Name,
+            group.Members
+                .OrderBy(member => member.JoinedAt)
+                .Select(member => new FamilyMemberDto(
+                    member.UserId,
+                    names.GetValueOrDefault(member.UserId, string.Empty),
+                    member.Role,
+                    member.JoinedAt))
+                .ToArray());
+    }
 
     public static PregnancyDto ToDto(this PregnancyRecord pregnancy, DateOnly? asOfDate = null)
     {
@@ -80,6 +117,15 @@ public static class DtoMapper
         telemetry.MeasuredAt,
         telemetry.Semaphore.Light,
         telemetry.Semaphore.Summary);
+
+    public static QuickAlertDto ToDto(this QuickAlert alert) => new(
+        alert.Id,
+        alert.Type,
+        alert.Message,
+        alert.CreatedAt,
+        alert.Status,
+        alert.Response,
+        alert.RespondedAt);
 
     public static TriageConversationDto ToDto(this TriageConversation conversation) => new(
         conversation.Id,

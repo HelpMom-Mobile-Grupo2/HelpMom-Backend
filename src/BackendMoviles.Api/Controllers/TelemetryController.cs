@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BackendMoviles.Application.Common;
 using BackendMoviles.Application.Telemetry;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -7,13 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace BackendMoviles.Api.Controllers;
 
 [ApiController]
+[Tags("Telemetry")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Mother")]
 public sealed class TelemetryController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(TelemetryDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> AddSimulatedMeasurement(
         AddTelemetryRequest request,
         CancellationToken cancellationToken)
@@ -34,7 +38,7 @@ public sealed class TelemetryController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("status")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(TelemetryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHealthStatus(CancellationToken cancellationToken)
     {
@@ -45,6 +49,19 @@ public sealed class TelemetryController(IMediator mediator) : ControllerBase
 
         var status = await mediator.Send(new GetHealthStatusQuery(motherUserId), cancellationToken);
         return status is null ? NotFound(new { message = "Aún no hay mediciones de salud." }) : Ok(status);
+    }
+
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(IReadOnlyCollection<TelemetryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetHistory([FromQuery] int count = 20, CancellationToken cancellationToken = default)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await mediator.Send(new GetTelemetryHistoryQuery(motherUserId, count), cancellationToken));
     }
 
     private bool TryGetUserId(out Guid userId)
