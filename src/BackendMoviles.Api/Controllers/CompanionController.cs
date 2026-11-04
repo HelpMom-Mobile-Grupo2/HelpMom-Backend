@@ -8,14 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace BackendMoviles.Api.Controllers;
 
 [ApiController]
+[Tags("Companion")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 [Route("api/[controller]")]
 [Authorize(Roles = "Partner")]
 public sealed class CompanionController(IMediator mediator) : ControllerBase
 {
     [HttpGet("summary")]
     [ProducesResponseType(typeof(CompanionSummaryDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var partnerUserId))
@@ -28,8 +30,7 @@ public sealed class CompanionController(IMediator mediator) : ControllerBase
 
     [HttpGet("tips/today")]
     [ProducesResponseType(typeof(IReadOnlyCollection<DailyTipDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> GetTodayTips(CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var partnerUserId))
@@ -42,8 +43,7 @@ public sealed class CompanionController(IMediator mediator) : ControllerBase
 
     [HttpPost("tips/{id:guid}/done")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> MarkTipDone(Guid id, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var partnerUserId))

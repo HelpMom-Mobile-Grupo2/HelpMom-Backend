@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace BackendMoviles.Api.Controllers;
 
 [ApiController]
+[Tags("Alerts")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [Route("api/[controller]")]
 [Authorize]
 public sealed class AlertsController(IMediator mediator) : ControllerBase
@@ -16,9 +18,9 @@ public sealed class AlertsController(IMediator mediator) : ControllerBase
     [HttpPost]
     [Authorize(Roles = "Mother")]
     [ProducesResponseType(typeof(QuickAlertDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(CreateQuickAlertRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var motherUserId))
@@ -35,8 +37,8 @@ public sealed class AlertsController(IMediator mediator) : ControllerBase
     [HttpGet]
     [Authorize(Roles = "Mother,Partner")]
     [ProducesResponseType(typeof(IReadOnlyCollection<QuickAlertDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> GetAlerts([FromQuery] string? status, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId))
@@ -50,10 +52,10 @@ public sealed class AlertsController(IMediator mediator) : ControllerBase
     [HttpPost("{id:guid}/respond")]
     [Authorize(Roles = "Partner")]
     [ProducesResponseType(typeof(QuickAlertDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Respond(
         Guid id,
         RespondQuickAlertRequest request,

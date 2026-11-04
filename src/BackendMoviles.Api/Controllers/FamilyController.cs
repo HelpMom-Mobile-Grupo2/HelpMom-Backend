@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace BackendMoviles.Api.Controllers;
 
 [ApiController]
+[Tags("Family")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [Route("api/[controller]")]
 [Authorize]
 public sealed class FamilyController(IMediator mediator) : ControllerBase
@@ -16,7 +18,7 @@ public sealed class FamilyController(IMediator mediator) : ControllerBase
     [Authorize(Roles = "Mother")]
     [ProducesResponseType(typeof(FamilyInvitationDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CreateInvitation(CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var motherUserId))
@@ -31,10 +33,10 @@ public sealed class FamilyController(IMediator mediator) : ControllerBase
     [HttpPost("join")]
     [Authorize(Roles = "Partner")]
     [ProducesResponseType(typeof(JoinFamilyDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Join(JoinFamilyRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var partnerUserId))
@@ -49,7 +51,7 @@ public sealed class FamilyController(IMediator mediator) : ControllerBase
     [Authorize(Roles = "Mother")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemovePartner(CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var motherUserId))
@@ -64,7 +66,7 @@ public sealed class FamilyController(IMediator mediator) : ControllerBase
     [HttpGet]
     [Authorize(Roles = "Mother,Partner")]
     [ProducesResponseType(typeof(FamilyGroupDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId))
