@@ -54,6 +54,50 @@ public sealed class PregnancyController(IMediator mediator) : ControllerBase
         return pregnancy is null || pregnancy.MotherUserId != motherUserId ? NotFound() : Ok(pregnancy);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateDates(
+        Guid id,
+        UpdatePregnancyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        var pregnancy = await mediator.Send(new GetPregnancyRecordQuery(id), cancellationToken);
+        if (pregnancy is null || pregnancy.MotherUserId != motherUserId)
+        {
+            return NotFound();
+        }
+
+        return Ok(await mediator.Send(
+            new UpdatePregnancyDatesCommand(id, request.LastMenstrualPeriod, request.DueDate),
+            cancellationToken));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        var pregnancy = await mediator.Send(new GetPregnancyRecordQuery(id), cancellationToken);
+        if (pregnancy is null || pregnancy.MotherUserId != motherUserId)
+        {
+            return NotFound();
+        }
+
+        return await mediator.Send(new DeletePregnancyRecordCommand(id), cancellationToken) ? NoContent() : NotFound();
+    }
+
     [HttpPost("{pregnancyId:guid}/symptoms")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -88,4 +132,5 @@ public sealed class PregnancyController(IMediator mediator) : ControllerBase
 }
 
 public sealed record CreatePregnancyRequest(DateOnly LastMenstrualPeriod, DateOnly DueDate);
+public sealed record UpdatePregnancyRequest(DateOnly LastMenstrualPeriod, DateOnly DueDate);
 public sealed record RecordSymptomRequest(string Description, SymptomSeverity Severity, DateTimeOffset? OccurredAt = null);
