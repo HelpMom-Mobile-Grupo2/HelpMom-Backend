@@ -13,7 +13,7 @@ using Xunit;
 
 namespace BackendMoviles.Tests;
 
-public sealed class ApiTestFactory : WebApplicationFactory<Program>
+public class ApiTestFactory : WebApplicationFactory<Program>
 {
     public const string Password = "a-strong-test-password";
 
