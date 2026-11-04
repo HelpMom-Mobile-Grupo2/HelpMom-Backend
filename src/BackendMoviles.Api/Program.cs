@@ -2,6 +2,7 @@ using System.Text;
 using BackendMoviles.Api;
 using BackendMoviles.Application;
 using BackendMoviles.Infrastructure;
+using BackendMoviles.Infrastructure.Persistence;
 using BackendMoviles.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -40,6 +41,9 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
+// Render polls /health; it answers 503 when the database cannot be reached.
+builder.Services.AddHealthChecks().AddDbContextCheck<HelpMomDbContext>("database");
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -77,6 +81,7 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
 

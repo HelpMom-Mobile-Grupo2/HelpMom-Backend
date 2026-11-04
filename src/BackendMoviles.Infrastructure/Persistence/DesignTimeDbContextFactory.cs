@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace BackendMoviles.Infrastructure.Persistence;
 
-// Used by `dotnet ef` so migrations are generated for SQLite without starting the API (and its JWT checks).
+// Used by `dotnet ef --context HelpMomDbContext` so SQLite migrations are generated without starting the API.
 public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<HelpMomDbContext>
 {
     public HelpMomDbContext CreateDbContext(string[] args) =>
