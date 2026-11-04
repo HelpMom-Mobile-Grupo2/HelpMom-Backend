@@ -103,13 +103,12 @@ public sealed class JoinFamilyHandler(
 
         var family = await families.GetByIdAsync(invitation.FamilyGroupId, cancellationToken)
             ?? throw new KeyNotFoundException("No se encontró el grupo familiar.");
-        if (family.Members.Any(member => member.Role == FamilyRole.Partner))
+        if (family.GetPartner() is not null)
         {
             throw new InvalidOperationException("Esta gestante ya tiene un acompañante vinculado.");
         }
 
-        var motherUserId = family.Members.Single(member => member.Role == FamilyRole.Mother).UserId;
-        var mother = await users.GetByIdAsync(motherUserId, cancellationToken)
+        var mother = await users.GetByIdAsync(family.GetMotherUserId(), cancellationToken)
             ?? throw new KeyNotFoundException("No se encontró a la gestante del grupo.");
 
         // The invitation shares the scoped unit of work, so AddFamilyMember persists both changes in one save.
@@ -136,7 +135,7 @@ public sealed class RemovePartnerHandler(IFamilyGroupRepository families, IUnitO
     {
         var family = await families.GetByMemberAsync(request.MotherUserId, FamilyRole.Mother, cancellationToken)
             ?? throw new KeyNotFoundException("No se encontró tu grupo familiar.");
-        var partner = family.Members.FirstOrDefault(member => member.Role == FamilyRole.Partner)
+        var partner = family.GetPartner()
             ?? throw new KeyNotFoundException("No tienes un acompañante vinculado.");
 
         family.RemoveMember(partner.UserId);
