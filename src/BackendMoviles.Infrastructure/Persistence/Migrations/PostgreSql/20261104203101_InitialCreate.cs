@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace BackendMoviles.Infrastructure.Persistence.Migrations
+namespace BackendMoviles.Infrastructure.Persistence.Migrations.PostgreSql
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -17,11 +17,11 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "DailyTips",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Title = table.Column<string>(type: "TEXT", maxLength: 160, nullable: false),
-                    Body = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
-                    FromWeek = table.Column<int>(type: "INTEGER", nullable: false),
-                    ToWeek = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Title = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    Body = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    FromWeek = table.Column<int>(type: "integer", nullable: false),
+                    ToWeek = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -32,8 +32,8 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "FamilyGroups",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 160, nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -44,11 +44,11 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "HealthTelemetry",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MotherUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    FetalHeartRate = table.Column<int>(type: "INTEGER", nullable: false),
-                    Temperature = table.Column<decimal>(type: "TEXT", nullable: false),
-                    MeasuredAt = table.Column<long>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MotherUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    FetalHeartRate = table.Column<int>(type: "integer", nullable: false),
+                    Temperature = table.Column<decimal>(type: "numeric", nullable: false),
+                    MeasuredAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,11 +59,11 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "PregnancyRecords",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MotherUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    LastMenstrualPeriod = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    DueDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MotherUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    LastMenstrualPeriod = table.Column<DateOnly>(type: "date", nullable: false),
+                    DueDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -74,12 +74,12 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "TriageConversations",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    MotherUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    LatestAssessment_Urgency = table.Column<int>(type: "INTEGER", nullable: true),
-                    LatestAssessment_Guidance = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
-                    LatestAssessment_AssessedAt = table.Column<long>(type: "INTEGER", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MotherUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    LatestAssessment_Urgency = table.Column<int>(type: "integer", nullable: true),
+                    LatestAssessment_Guidance = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    LatestAssessment_AssessedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -90,13 +90,13 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 254, nullable: false),
-                    FullName = table.Column<string>(type: "TEXT", maxLength: 160, nullable: false),
-                    PasswordHash = table.Column<string>(type: "TEXT", nullable: false),
-                    Role = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
+                    FullName = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: false),
+                    Role = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -107,10 +107,10 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "TipCompletions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    TipId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    PartnerUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Date = table.Column<DateOnly>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TipId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PartnerUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -127,14 +127,14 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "FamilyInvitations",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    FamilyGroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Code = table.Column<string>(type: "TEXT", maxLength: 7, nullable: false),
-                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    ExpiresAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    IsUsed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    UsedByUserId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    UsedAt = table.Column<long>(type: "INTEGER", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FamilyGroupId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Code = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    IsUsed = table.Column<bool>(type: "boolean", nullable: false),
+                    UsedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
+                    UsedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -151,11 +151,11 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "FamilyMember",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    UserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Role = table.Column<int>(type: "INTEGER", nullable: false),
-                    JoinedAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    FamilyGroupId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Role = table.Column<int>(type: "integer", nullable: false),
+                    JoinedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    FamilyGroupId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -172,16 +172,16 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "QuickAlerts",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    FamilyGroupId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    CreatedByUserId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Type = table.Column<int>(type: "INTEGER", nullable: false),
-                    Message = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    Status = table.Column<int>(type: "INTEGER", nullable: false),
-                    Response = table.Column<int>(type: "INTEGER", nullable: true),
-                    RespondedByUserId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    RespondedAt = table.Column<long>(type: "INTEGER", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FamilyGroupId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedByUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    Message = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Response = table.Column<int>(type: "integer", nullable: true),
+                    RespondedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
+                    RespondedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -198,11 +198,11 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "SymptomEntry",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
-                    Severity = table.Column<int>(type: "INTEGER", nullable: false),
-                    OccurredAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    PregnancyRecordId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    Severity = table.Column<int>(type: "integer", nullable: false),
+                    OccurredAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    PregnancyRecordId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -219,11 +219,11 @@ namespace BackendMoviles.Infrastructure.Persistence.Migrations
                 name: "TriageMessage",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Author = table.Column<int>(type: "INTEGER", nullable: false),
-                    Content = table.Column<string>(type: "TEXT", maxLength: 4000, nullable: false),
-                    SentAt = table.Column<long>(type: "INTEGER", nullable: false),
-                    TriageConversationId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Author = table.Column<int>(type: "integer", nullable: false),
+                    Content = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
+                    SentAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    TriageConversationId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {

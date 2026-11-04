@@ -9,9 +9,19 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace BackendMoviles.Infrastructure.Persistence;
 
-public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
-    : DbContext(options), IUnitOfWork
+public class HelpMomDbContext : DbContext, IUnitOfWork
 {
+    public HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
+        : base(options)
+    {
+    }
+
+    // Lets provider-specific subclasses (PostgreSQL) keep their own migrations, which EF matches by context type.
+    protected HelpMomDbContext(DbContextOptions options)
+        : base(options)
+    {
+    }
+
     public DbSet<User> Users => Set<User>();
     public DbSet<FamilyGroup> FamilyGroups => Set<FamilyGroup>();
     public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();

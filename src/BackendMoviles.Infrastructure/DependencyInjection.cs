@@ -34,9 +34,15 @@ public static class DependencyInjection
             services.AddDbContext<HelpMomDbContext>(options =>
                 options.UseSqlite(string.IsNullOrWhiteSpace(connectionString) ? DefaultSqliteConnection : connectionString));
         }
+        else if (provider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
+        {
+            var connectionString = GetPostgreSqlConnectionString(configuration);
+            services.AddDbContext<HelpMomDbContext, PostgreSqlHelpMomDbContext>(options =>
+                options.UseNpgsql(connectionString));
+        }
         else
         {
-            throw new InvalidOperationException("Database:Provider must be Sqlite or InMemory.");
+            throw new InvalidOperationException("Database:Provider must be Sqlite, PostgreSql or InMemory.");
         }
 
         services.Configure<JwtTokenOptions>(configuration.GetSection("Jwt"));
@@ -52,5 +58,21 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordService, Pbkdf2PasswordService>();
         services.AddSingleton<IAccessTokenService, JwtAccessTokenService>();
         return services;
+    }
+
+    // DATABASE_URL (set by Render) wins over Database:ConnectionString, which must already be in Npgsql format.
+    private static string GetPostgreSqlConnectionString(IConfiguration configuration)
+    {
+        var databaseUrl = configuration["DATABASE_URL"];
+        if (!string.IsNullOrWhiteSpace(databaseUrl))
+        {
+            return PostgreSqlConnectionString.FromDatabaseUrl(databaseUrl);
+        }
+
+        var connectionString = configuration["Database:ConnectionString"];
+        return string.IsNullOrWhiteSpace(connectionString)
+            ? throw new InvalidOperationException(
+                "Database:Provider PostgreSql requires DATABASE_URL or Database:ConnectionString.")
+            : connectionString;
     }
 }
