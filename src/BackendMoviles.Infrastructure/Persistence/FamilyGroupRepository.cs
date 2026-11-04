@@ -14,11 +14,4 @@ public sealed class FamilyGroupRepository(HelpMomDbContext context)
             .FirstOrDefaultAsync(
                 group => group.Members.Any(member => member.UserId == userId && member.Role == role),
                 cancellationToken);
-
-    public async Task<FamilyRole?> GetRoleForUserAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var groups = await Entities.Include(group => group.Members).ToListAsync(cancellationToken);
-        return groups.SelectMany(group => group.Members)
-            .FirstOrDefault(member => member.UserId == userId)?.Role;
-    }
 }
