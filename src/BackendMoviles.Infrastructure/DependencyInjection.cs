@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<HelpMomDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IFamilyGroupRepository, FamilyGroupRepository>();
+        services.AddScoped<IFamilyInvitationRepository, FamilyInvitationRepository>();
         services.AddScoped<IPregnancyRepository, PregnancyRepository>();
         services.AddScoped<IHealthTelemetryRepository, HealthTelemetryRepository>();
         services.AddScoped<ITriageConversationRepository, TriageConversationRepository>();

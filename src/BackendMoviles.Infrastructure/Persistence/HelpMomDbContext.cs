@@ -12,6 +12,7 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<FamilyGroup> FamilyGroups => Set<FamilyGroup>();
+    public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
     public DbSet<PregnancyRecord> PregnancyRecords => Set<PregnancyRecord>();
     public DbSet<HealthTelemetry> HealthTelemetry => Set<HealthTelemetry>();
     public DbSet<TriageConversation> TriageConversations => Set<TriageConversation>();
@@ -54,6 +55,17 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
             builder.HasKey(member => member.Id);
             builder.Property<Guid>("FamilyGroupId").IsRequired();
             builder.HasIndex("FamilyGroupId", nameof(FamilyMember.UserId)).IsUnique();
+        });
+
+        modelBuilder.Entity<FamilyInvitation>(builder =>
+        {
+            builder.HasKey(invitation => invitation.Id);
+            builder.Property(invitation => invitation.Code).HasMaxLength(7).IsRequired();
+            builder.HasIndex(invitation => invitation.Code);
+            builder.HasOne<FamilyGroup>()
+                .WithMany()
+                .HasForeignKey(invitation => invitation.FamilyGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PregnancyRecord>(builder =>
