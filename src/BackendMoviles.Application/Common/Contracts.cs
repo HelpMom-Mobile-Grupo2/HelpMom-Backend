@@ -1,3 +1,4 @@
+using BackendMoviles.Domain.Companion;
 using BackendMoviles.Domain.Identity;
 using BackendMoviles.Domain.Pregnancy;
 using BackendMoviles.Domain.Telemetry;
@@ -39,6 +40,23 @@ public sealed record TelemetryDto(
     DateTimeOffset MeasuredAt,
     HealthLight HealthLight,
     string HealthSummary);
+// Partner-facing view of the mother: deliberately carries no raw clinical values or symptoms.
+public sealed record CompanionSummaryDto(
+    string MotherName,
+    int? GestationalWeeks,
+    int? GestationalDays,
+    HealthLight? HealthLight,
+    string? HealthSummary,
+    DateTimeOffset? MeasuredAt);
+public sealed record QuickAlertDto(
+    Guid Id,
+    QuickAlertType Type,
+    string Message,
+    DateTimeOffset CreatedAt,
+    QuickAlertStatus Status,
+    QuickAlertResponse? Response,
+    DateTimeOffset? RespondedAt);
+public sealed record DailyTipDto(Guid Id, string Title, string Body, bool Done);
 public sealed record TriageMessageDto(Guid Id, MessageAuthor Author, string Content, DateTimeOffset SentAt);
 public sealed record TriageConversationDto(
     Guid Id,
@@ -93,6 +111,15 @@ public static class DtoMapper
         telemetry.MeasuredAt,
         telemetry.Semaphore.Light,
         telemetry.Semaphore.Summary);
+
+    public static QuickAlertDto ToDto(this QuickAlert alert) => new(
+        alert.Id,
+        alert.Type,
+        alert.Message,
+        alert.CreatedAt,
+        alert.Status,
+        alert.Response,
+        alert.RespondedAt);
 
     public static TriageConversationDto ToDto(this TriageConversation conversation) => new(
         conversation.Id,
