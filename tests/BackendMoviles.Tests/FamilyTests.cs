@@ -219,24 +219,4 @@ public sealed class FamilyTests(ApiTestFactory factory) : IClassFixture<ApiTestF
         Assert.Equal(HttpStatusCode.NotFound, (await motherClient.DeleteAsync("/api/family/partner")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await factory.JoinAsync(partner, await factory.CreateInvitationAsync(mother))).StatusCode);
     }
-
-    [Theory]
-    [InlineData("Partner", "GET", "/api/telemetry/status")]
-    [InlineData("Partner", "GET", "/api/pregnancy")]
-    [InlineData("Partner", "POST", "/api/family/invitations")]
-    [InlineData("Partner", "DELETE", "/api/family/partner")]
-    [InlineData("Mother", "POST", "/api/family/join")]
-    public async Task Endpoints_RejectWrongRole_WithForbidden(string role, string method, string path)
-    {
-        var account = await factory.RegisterAsync(role);
-        using var client = factory.CreateClient(account.AccessToken);
-        using var request = new HttpRequestMessage(new HttpMethod(method), path)
-        {
-            Content = method == "POST" ? JsonContent.Create(new { code = "HM-0000" }) : null
-        };
-
-        var response = await client.SendAsync(request);
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
 }

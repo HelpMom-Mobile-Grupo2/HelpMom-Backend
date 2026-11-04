@@ -24,6 +24,7 @@ public class ApiTestFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Secret", "local-test-secret-that-is-at-least-32-bytes-long");
         builder.UseSetting("Jwt:Issuer", "HelpMomTests");
         builder.UseSetting("Jwt:Audience", "HelpMomTestsClient");
+        builder.UseSetting("Database:Provider", "InMemory");
         builder.UseSetting("Database:Name", _databaseName);
         builder.ConfigureServices(services => services.AddTransient<IStartupFilter, StreamResponseBodyStartupFilter>());
     }
