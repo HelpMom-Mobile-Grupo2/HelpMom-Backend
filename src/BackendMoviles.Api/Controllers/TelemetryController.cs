@@ -47,6 +47,19 @@ public sealed class TelemetryController(IMediator mediator) : ControllerBase
         return status is null ? NotFound(new { message = "Aún no hay mediciones de salud." }) : Ok(status);
     }
 
+    [HttpGet("history")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetHistory([FromQuery] int count = 20, CancellationToken cancellationToken = default)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await mediator.Send(new GetTelemetryHistoryQuery(motherUserId, count), cancellationToken));
+    }
+
     private bool TryGetUserId(out Guid userId)
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
