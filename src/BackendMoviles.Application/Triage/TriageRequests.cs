@@ -1,4 +1,7 @@
+using System.Globalization;
+using System.Text;
 using BackendMoviles.Application.Common;
+using BackendMoviles.Application.Companion;
 using BackendMoviles.Domain.Common;
 using BackendMoviles.Domain.Triage;
 using FluentValidation;
@@ -22,14 +25,19 @@ public sealed class SendTriageMessageValidator : AbstractValidator<SendTriageMes
 
 public sealed class SendTriageMessageHandler(
     ITriageConversationRepository conversations,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IPublisher publisher)
     : IRequestHandler<SendTriageMessageCommand, TriageConversationDto>
 {
-    private static readonly string[] EmergencyTerms =
+    private static readonly string[] EmergencyTerms = Normalize(
     [
         "sangrado abundante", "no puedo respirar", "dificultad para respirar",
-        "convulsiones", "desmayo", "dolor intenso", "se mueve menos"
-    ];
+        "convulsiones", "desmayo", "dolor intenso", "se mueve menos",
+        "me estoy desangrando", "rompí fuente", "no siento al bebé",
+        "dolor muy fuerte", "visión borrosa", "me desmayé"
+    ]);
+
+    private static readonly string[] CareTeamTerms = Normalize(["fiebre", "dolor", "sangrado", "contracciones"]);
 
     public async Task<TriageConversationDto> Handle(
         SendTriageMessageCommand request,
@@ -59,12 +67,38 @@ public sealed class SendTriageMessageHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (assessment.Urgency == TriageUrgency.Emergency)
+        {
+            await publisher.Publish(
+                new EmergencyDetected(request.MotherUserId, EmergencyReasons.TriageEmergency),
+                cancellationToken);
+        }
+
         return conversation.ToDto();
     }
 
+    // Lower-cases and strips accents so "Rompí fuente" and "rompi fuente" match the same term.
+    public static string Normalize(string text)
+    {
+        var decomposed = text.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(decomposed.Length);
+        foreach (var character in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    private static string[] Normalize(string[] terms) => terms.Select(Normalize).ToArray();
+
     private static TriageAssessment Assess(string content, DateTimeOffset assessedAt)
     {
-        var normalized = content.ToLowerInvariant();
+        var normalized = Normalize(content);
         if (EmergencyTerms.Any(term => normalized.Contains(term, StringComparison.Ordinal)))
         {
             return TriageAssessment.Create(
@@ -73,10 +107,7 @@ public sealed class SendTriageMessageHandler(
                 assessedAt);
         }
 
-        if (normalized.Contains("fiebre", StringComparison.Ordinal)
-            || normalized.Contains("dolor", StringComparison.Ordinal)
-            || normalized.Contains("sangrado", StringComparison.Ordinal)
-            || normalized.Contains("contracciones", StringComparison.Ordinal))
+        if (CareTeamTerms.Any(term => normalized.Contains(term, StringComparison.Ordinal)))
         {
             return TriageAssessment.Create(
                 TriageUrgency.ContactCareTeam,
@@ -88,6 +119,34 @@ public sealed class SendTriageMessageHandler(
             TriageUrgency.SelfCare,
             "Esta respuesta es una simulación, no un diagnóstico. Registra cómo evoluciona el síntoma y consulta a tu equipo de salud ante cualquier duda o empeoramiento.",
             assessedAt);
+    }
+}
+
+public sealed record GetTriageConversationsQuery(Guid MotherUserId)
+    : IRequest<IReadOnlyCollection<TriageConversationSummaryDto>>;
+
+public sealed class GetTriageConversationsValidator : AbstractValidator<GetTriageConversationsQuery>
+{
+    public GetTriageConversationsValidator()
+    {
+        RuleFor(request => request.MotherUserId).NotEmpty();
+    }
+}
+
+public sealed class GetTriageConversationsHandler(ITriageConversationRepository conversations)
+    : IRequestHandler<GetTriageConversationsQuery, IReadOnlyCollection<TriageConversationSummaryDto>>
+{
+    public async Task<IReadOnlyCollection<TriageConversationSummaryDto>> Handle(
+        GetTriageConversationsQuery request,
+        CancellationToken cancellationToken)
+    {
+        var items = await conversations.GetByMotherAsync(request.MotherUserId, cancellationToken);
+        return items.Select(conversation => new TriageConversationSummaryDto(
+                conversation.Id,
+                conversation.CreatedAt,
+                conversation.LatestAssessment?.Urgency,
+                conversation.Messages.MaxBy(message => message.SentAt)?.Content))
+            .ToArray();
     }
 }
 

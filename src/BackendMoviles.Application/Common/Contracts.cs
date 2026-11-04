@@ -66,6 +66,12 @@ public sealed record TriageConversationDto(
     TriageUrgency? Urgency,
     string? Guidance);
 
+public sealed record TriageConversationSummaryDto(
+    Guid Id,
+    DateTimeOffset CreatedAt,
+    TriageUrgency? Urgency,
+    string? LastMessage);
+
 public static class DtoMapper
 {
     public static UserDto ToDto(this User user) => new(user.Id, user.Email.Value, user.FullName, user.IsActive);

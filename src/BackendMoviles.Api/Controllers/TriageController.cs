@@ -29,6 +29,18 @@ public sealed class TriageController(IMediator mediator) : ControllerBase
         return CreatedAtAction(nameof(GetConversation), new { conversationId = result.Id }, result);
     }
 
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetConversations(CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var motherUserId))
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await mediator.Send(new GetTriageConversationsQuery(motherUserId), cancellationToken));
+    }
+
     [HttpPost("{conversationId:guid}/messages")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
