@@ -16,7 +16,7 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
         var result = await mediator.Send(
-            new RegisterUserCommand(request.Email, request.FullName, request.Password),
+            new RegisterUserCommand(request.Email, request.FullName, request.Password, request.Role),
             cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
     }
@@ -32,5 +32,5 @@ public sealed class AuthController(IMediator mediator) : ControllerBase
     }
 }
 
-public sealed record RegisterRequest(string Email, string FullName, string Password);
+public sealed record RegisterRequest(string Email, string FullName, string Password, string? Role = null);
 public sealed record LoginRequest(string Email, string Password);

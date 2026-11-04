@@ -9,6 +9,12 @@ public sealed class FamilyGroupRepository(HelpMomDbContext context)
     public new Task<FamilyGroup?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Entities.Include(group => group.Members).FirstOrDefaultAsync(group => group.Id == id, cancellationToken);
 
+    public Task<FamilyGroup?> GetByMemberAsync(Guid userId, FamilyRole role, CancellationToken cancellationToken = default) =>
+        Entities.Include(group => group.Members)
+            .FirstOrDefaultAsync(
+                group => group.Members.Any(member => member.UserId == userId && member.Role == role),
+                cancellationToken);
+
     public async Task<FamilyRole?> GetRoleForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var groups = await Entities.Include(group => group.Members).ToListAsync(cancellationToken);

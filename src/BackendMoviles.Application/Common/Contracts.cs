@@ -18,8 +18,10 @@ public interface IAccessTokenService
 
 public sealed record UserDto(Guid Id, string Email, string FullName, bool IsActive);
 public sealed record AuthResponse(UserDto User, Guid? FamilyGroupId, string? Role, string AccessToken);
-public sealed record FamilyMemberDto(Guid UserId, FamilyRole Role, DateTimeOffset JoinedAt);
+public sealed record FamilyMemberDto(Guid UserId, string FullName, FamilyRole Role, DateTimeOffset JoinedAt);
 public sealed record FamilyGroupDto(Guid Id, string Name, IReadOnlyCollection<FamilyMemberDto> Members);
+public sealed record FamilyInvitationDto(string Code, DateTimeOffset ExpiresAt);
+public sealed record JoinFamilyDto(Guid FamilyGroupId, string MotherName);
 public sealed record SymptomDto(Guid Id, string Description, SymptomSeverity Severity, DateTimeOffset OccurredAt);
 public sealed record PregnancyDto(
     Guid Id,
@@ -50,10 +52,21 @@ public static class DtoMapper
 {
     public static UserDto ToDto(this User user) => new(user.Id, user.Email.Value, user.FullName, user.IsActive);
 
-    public static FamilyGroupDto ToDto(this FamilyGroup group) => new(
-        group.Id,
-        group.Name,
-        group.Members.Select(member => new FamilyMemberDto(member.UserId, member.Role, member.JoinedAt)).ToArray());
+    public static FamilyGroupDto ToDto(this FamilyGroup group, IEnumerable<User> members)
+    {
+        var names = members.ToDictionary(user => user.Id, user => user.FullName);
+        return new FamilyGroupDto(
+            group.Id,
+            group.Name,
+            group.Members
+                .OrderBy(member => member.JoinedAt)
+                .Select(member => new FamilyMemberDto(
+                    member.UserId,
+                    names.GetValueOrDefault(member.UserId, string.Empty),
+                    member.Role,
+                    member.JoinedAt))
+                .ToArray());
+    }
 
     public static PregnancyDto ToDto(this PregnancyRecord pregnancy, DateOnly? asOfDate = null)
     {
