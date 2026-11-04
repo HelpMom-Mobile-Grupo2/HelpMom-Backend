@@ -1,0 +1,5 @@
+root = true
+
+# UTF-8 without BOM keeps Spanish accents intact across editors and shells.
+[*]
+charset = utf-8
