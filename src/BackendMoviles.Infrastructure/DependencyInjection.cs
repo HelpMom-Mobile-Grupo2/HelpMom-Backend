@@ -1,5 +1,6 @@
 using BackendMoviles.Application.Common;
 using BackendMoviles.Domain.Common;
+using BackendMoviles.Domain.Companion;
 using BackendMoviles.Domain.Identity;
 using BackendMoviles.Domain.Pregnancy;
 using BackendMoviles.Domain.Telemetry;
@@ -30,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<IPregnancyRepository, PregnancyRepository>();
         services.AddScoped<IHealthTelemetryRepository, HealthTelemetryRepository>();
         services.AddScoped<ITriageConversationRepository, TriageConversationRepository>();
+        services.AddScoped<IQuickAlertRepository, QuickAlertRepository>();
+        services.AddScoped<IDailyTipRepository, DailyTipRepository>();
         services.AddSingleton<IPasswordService, Pbkdf2PasswordService>();
         services.AddSingleton<IAccessTokenService, JwtAccessTokenService>();
         return services;

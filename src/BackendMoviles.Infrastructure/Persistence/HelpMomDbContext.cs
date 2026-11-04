@@ -1,4 +1,5 @@
 using BackendMoviles.Domain.Common;
+using BackendMoviles.Domain.Companion;
 using BackendMoviles.Domain.Identity;
 using BackendMoviles.Domain.Pregnancy;
 using BackendMoviles.Domain.Telemetry;
@@ -16,6 +17,9 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
     public DbSet<PregnancyRecord> PregnancyRecords => Set<PregnancyRecord>();
     public DbSet<HealthTelemetry> HealthTelemetry => Set<HealthTelemetry>();
     public DbSet<TriageConversation> TriageConversations => Set<TriageConversation>();
+    public DbSet<QuickAlert> QuickAlerts => Set<QuickAlert>();
+    public DbSet<DailyTip> DailyTips => Set<DailyTip>();
+    public DbSet<TipCompletion> TipCompletions => Set<TipCompletion>();
 
     public void Add(Entity entity)
     {
@@ -119,6 +123,35 @@ public sealed class HelpMomDbContext(DbContextOptions<HelpMomDbContext> options)
             builder.HasKey(message => message.Id);
             builder.Property<Guid>("TriageConversationId").IsRequired();
             builder.Property(message => message.Content).HasMaxLength(4000).IsRequired();
+        });
+
+        modelBuilder.Entity<QuickAlert>(builder =>
+        {
+            builder.HasKey(alert => alert.Id);
+            builder.Property(alert => alert.Message).HasMaxLength(QuickAlert.MaxMessageLength).IsRequired();
+            builder.HasIndex(alert => new { alert.FamilyGroupId, alert.CreatedAt });
+            builder.HasOne<FamilyGroup>()
+                .WithMany()
+                .HasForeignKey(alert => alert.FamilyGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DailyTip>(builder =>
+        {
+            builder.HasKey(tip => tip.Id);
+            builder.Property(tip => tip.Title).HasMaxLength(160).IsRequired();
+            builder.Property(tip => tip.Body).HasMaxLength(1000).IsRequired();
+            builder.HasData(DailyTipSeed.Tips);
+        });
+
+        modelBuilder.Entity<TipCompletion>(builder =>
+        {
+            builder.HasKey(completion => completion.Id);
+            builder.HasIndex(completion => new { completion.TipId, completion.PartnerUserId, completion.Date }).IsUnique();
+            builder.HasOne<DailyTip>()
+                .WithMany()
+                .HasForeignKey(completion => completion.TipId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

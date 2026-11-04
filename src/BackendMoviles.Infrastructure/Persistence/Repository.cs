@@ -5,6 +5,7 @@ namespace BackendMoviles.Infrastructure.Persistence;
 
 public class Repository<TEntity>(HelpMomDbContext context) where TEntity : Entity
 {
+    protected HelpMomDbContext Context => context;
     protected DbSet<TEntity> Entities => context.Set<TEntity>();
 
     public Task<TEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
