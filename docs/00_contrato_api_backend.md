@@ -68,6 +68,7 @@ Todos están implementados. La columna "Estado" indica si el endpoint ya existí
 | GET | `/api/companion/summary` | Partner | (sin body) | 200 `CompanionSummaryDto`. **Sin valores clínicos crudos ni síntomas.** 409 si no está vinculado | Nuevo ✅ |
 | GET | `/api/companion/tips/today` | Partner | (sin body) | 200 `DailyTipDto[]` (3 tips). 409 si no está vinculado | Nuevo ✅ |
 | POST | `/api/companion/tips/{id}/done` | Partner | (sin body) | 204. Idempotente. 404 si el tip no existe | Nuevo ✅ |
+| DELETE | `/api/companion/tips/{id}/done` | Partner | (sin body) | 204. Desmarca el tip de hoy (si se marcó por error). Idempotente. 404 si el tip no existe | Nuevo ✅ |
 | POST | `/api/alerts` | Mother | `{ "type": 2, "message"? }` (`message` hasta 500 caracteres) | 201 `QuickAlertDto`. 409 si no hay acompañante vinculado | Nuevo ✅ |
 | GET | `/api/alerts?status=pending\|all` | Mother, Partner | (sin body) | 200 `QuickAlertDto[]` del propio grupo, de la más reciente a la más antigua. **`all` por defecto**. 400 si `status` es otro valor. 409 si el partner no está vinculado | Nuevo ✅ |
 | POST | `/api/alerts/{id}/respond` | Partner | `{ "response": 1 }` | 200 `QuickAlertDto`. 404 si la alerta no es de su grupo, 409 si ya estaba respondida | Nuevo ✅ |
@@ -123,15 +124,25 @@ Todos están implementados. La columna "Estado" indica si el endpoint ya existí
   - Amarillo: FCF < 110 o > 160, o temperatura ≥ 38 °C o < 36 °C.
   - Verde: el resto.
 - **Triage:** detecta palabras clave, no es IA. Antes de comparar se pasa el texto a minúsculas y se le quitan las tildes, así que "Rompí fuente" y "rompi fuente" dan lo mismo.
-  - `urgency = 3` (Emergency) con "sangrado abundante", "no puedo respirar", "dificultad para respirar", "convulsiones", "desmayo", "dolor intenso", "se mueve menos", "me estoy desangrando", "rompí fuente", "no siento al bebé", "dolor muy fuerte", "visión borrosa" o "me desmayé".
-  - `urgency = 2` con "fiebre", "dolor", "sangrado" o "contracciones".
+  - `urgency = 3` (Emergency) cuando detecta una **señal de alarma**. Cada señal se reconoce por combinaciones de palabras, no por una frase exacta, así que entiende frases parecidas. Ejemplos:
+    - **sangrado abundante:** "sangrado abundante", "estoy sangrando mucho", "tengo sangrado y mucho dolor", "me estoy desangrando".
+    - **dificultad para respirar:** "no puedo respirar", "me cuesta respirar", "me falta el aire".
+    - **convulsiones:** "convulsiones", "estoy convulsionando".
+    - **desmayo o pérdida de conciencia:** "me desmayé", "perdí el conocimiento".
+    - **dolor muy intenso:** "dolor intenso", "me duele mucho", "dolor insoportable".
+    - **el bebé se mueve menos:** "no siento al bebé", "mi bebé no se mueve", "dejó de moverse".
+    - **posible ruptura de fuente:** "rompí fuente", "se me rompió la fuente", "me sale líquido".
+    - **visión borrosa o dolor de cabeza fuerte:** "visión borrosa", "veo lucecitas", "me duele mucho la cabeza".
+    - **fiebre muy alta:** "fiebre muy alta", "fiebre de 39".
+    La guía de la respuesta menciona la señal detectada, por ejemplo "(sangrado abundante)".
+  - `urgency = 2` con "fiebre", "dolor", "duele", "sangrado", "contracciones", "manchado", "vómito", "hinchazón", "ardor", "flujo", "presión", "cólico" o "calambre".
   - `urgency = 1` en cualquier otro caso.
   - La respuesta del asistente es siempre un texto fijo según la urgencia.
 - **SOS automática:** cuando una medición sale en rojo o el triage clasifica un mensaje como Emergency, el backend crea una alerta `type: 4` (Sos) para el acompañante vinculado, si lo hay. El mensaje es:
   - `"Alerta automática: la medición de salud salió en rojo"`, o
-  - `"Alerta automática: el triage detectó una posible emergencia"`.
+  - `"Alerta automática: el asistente detectó una posible emergencia: {señal}"`, por ejemplo `"Alerta automática: el asistente detectó una posible emergencia: sangrado abundante"`. Así el acompañante sabe qué pasó y puede actuar (llamarla, llamar al 106 o responder "Voy en camino"). Solo se envía el nombre de la señal, nunca el texto completo del chat.
 
-  **No se duplica:** si ya hay una SOS **pendiente** del mismo motivo creada en los últimos 10 minutos, no se crea otra. Si falla la creación de la alerta, la medición o el mensaje de triage igual responden 201/200.
+  **No se duplica:** si ya hay una SOS **pendiente** del mismo motivo (misma señal) creada en los últimos 10 minutos, no se crea otra. Si falla la creación de la alerta, la medición o el mensaje de triage igual responden 201/200.
 - **Alertas rápidas:** si `message` llega vacío, se usa un texto por defecto según el tipo:
   - Craving: "Tengo un antojo, ¿me ayudas a conseguir algo rico?"
   - TiredOrPain: "Me siento cansada o con molestias, ¿puedes ayudarme?"

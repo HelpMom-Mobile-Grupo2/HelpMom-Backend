@@ -49,7 +49,7 @@ public sealed class EmergencyPolicyFailureTests(FailingAlertsApiTestFactory fact
         var stored = await ApiTestFactory.ReadJsonAsync(await client.GetAsync($"/api/triage/{id}"));
         Assert.Equal(4, stored.GetProperty("messages").GetArrayLength());
         Assert.Contains(factory.Logs, entry => entry.Level == LogLevel.Error
-            && entry.Message.Contains(EmergencyReasons.TriageEmergency));
+            && entry.Message.Contains(EmergencyReasons.TriageEmergencyGeneric));
     }
 }
 

@@ -28,4 +28,18 @@ public sealed class DailyTipRepository(HelpMomDbContext context)
 
     public async Task AddCompletionAsync(TipCompletion completion, CancellationToken cancellationToken = default) =>
         await Context.TipCompletions.AddAsync(completion, cancellationToken);
+
+    public async Task RemoveCompletionAsync(
+        Guid tipId,
+        Guid partnerUserId,
+        DateOnly date,
+        CancellationToken cancellationToken = default)
+    {
+        var completions = await Context.TipCompletions
+            .Where(completion => completion.TipId == tipId
+                && completion.PartnerUserId == partnerUserId
+                && completion.Date == date)
+            .ToArrayAsync(cancellationToken);
+        Context.TipCompletions.RemoveRange(completions);
+    }
 }

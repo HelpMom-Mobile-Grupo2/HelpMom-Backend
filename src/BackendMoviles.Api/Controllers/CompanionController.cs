@@ -55,6 +55,20 @@ public sealed class CompanionController(IMediator mediator) : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("tips/{id:guid}/done")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnmarkTipDone(Guid id, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var partnerUserId))
+        {
+            return Unauthorized();
+        }
+
+        await mediator.Send(new UnmarkTipDoneCommand(partnerUserId, id), cancellationToken);
+        return NoContent();
+    }
+
     private bool TryGetUserId(out Guid userId)
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");

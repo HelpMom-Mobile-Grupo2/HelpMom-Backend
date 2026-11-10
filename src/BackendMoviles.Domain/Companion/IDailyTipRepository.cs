@@ -9,4 +9,9 @@ public interface IDailyTipRepository
         DateOnly date,
         CancellationToken cancellationToken = default);
     Task AddCompletionAsync(TipCompletion completion, CancellationToken cancellationToken = default);
+    Task RemoveCompletionAsync(
+        Guid tipId,
+        Guid partnerUserId,
+        DateOnly date,
+        CancellationToken cancellationToken = default);
 }

@@ -11,7 +11,8 @@ namespace BackendMoviles.Tests;
 public sealed class EmergencyPolicyTests(ApiTestFactory factory) : IClassFixture<ApiTestFactory>
 {
     private static readonly string RedTelemetryMessage = EmergencyAlertPolicy.MessageFor(EmergencyReasons.RedTelemetry);
-    private static readonly string TriageMessage = EmergencyAlertPolicy.MessageFor(EmergencyReasons.TriageEmergency);
+    private static readonly string TriageMessage = EmergencyAlertPolicy.MessageFor(
+        EmergencyReasons.TriageEmergency("posible ruptura de fuente"));
 
     [Fact]
     public async Task TriageEmergency_CreatesSosAlertForPartner()
@@ -110,7 +111,7 @@ public sealed class EmergencyPolicyTests(ApiTestFactory factory) : IClassFixture
     }
 
     [Fact]
-    public async Task RedTelemetryAndTriageEmergency_CreateOneSosPerReason()
+    public async Task RedTelemetryAndTriageEmergency_CreateOneSosPerAlarmSign()
     {
         var (mother, partner) = await factory.CreateLinkedFamilyAsync();
         using var motherClient = factory.CreateClient(mother.AccessToken);
@@ -120,7 +121,12 @@ public sealed class EmergencyPolicyTests(ApiTestFactory factory) : IClassFixture
         await motherClient.PostAsJsonAsync("/api/triage", new { content = "No siento al bebé" });
 
         var messages = (await GetPartnerAlertsAsync(partner)).Select(alert => alert.GetProperty("message").GetString());
-        Assert.Equal([TriageMessage, RedTelemetryMessage], messages);
+        Assert.Equal(
+        [
+            EmergencyAlertPolicy.MessageFor(EmergencyReasons.TriageEmergency("el bebé se mueve menos")),
+            EmergencyAlertPolicy.MessageFor(EmergencyReasons.TriageEmergency("desmayo o pérdida de conciencia")),
+            RedTelemetryMessage,
+        ], messages);
     }
 
     [Fact]
@@ -145,6 +151,13 @@ public sealed class EmergencyPolicyTests(ApiTestFactory factory) : IClassFixture
     [InlineData("vision borrosa y mareo")]
     [InlineData("Me desmayé")]
     [InlineData("me desmaye en la cocina")]
+    [InlineData("tengo sangrado y mucho dolor")]
+    [InlineData("estoy sangrando muchísimo")]
+    [InlineData("me cuesta respirar")]
+    [InlineData("mi bebé no se mueve")]
+    [InlineData("me duele mucho la cabeza")]
+    [InlineData("tengo fiebre muy alta")]
+    [InlineData("se me rompió la fuente")]
     public async Task Triage_ColloquialEmergencyTerms_AreEmergency(string content)
     {
         var mother = await factory.RegisterAsync("Mother");
@@ -153,6 +166,35 @@ public sealed class EmergencyPolicyTests(ApiTestFactory factory) : IClassFixture
         var triage = await ApiTestFactory.ReadJsonAsync(await client.PostAsJsonAsync("/api/triage", new { content }));
 
         Assert.Equal(3, triage.GetProperty("urgency").GetInt32());
+    }
+
+    [Theory]
+    [InlineData("estoy sangrando mucho", "sangrado abundante")]
+    [InlineData("me falta el aire", "dificultad para respirar")]
+    [InlineData("siento un dolor insoportable", "dolor muy intenso")]
+    public async Task TriageEmergency_SosMessageNamesTheAlarmSign(string content, string expectedSign)
+    {
+        var (mother, partner) = await factory.CreateLinkedFamilyAsync();
+        using var motherClient = factory.CreateClient(mother.AccessToken);
+
+        await motherClient.PostAsJsonAsync("/api/triage", new { content });
+
+        var alert = Assert.Single(await GetPartnerAlertsAsync(partner));
+        Assert.Contains(expectedSign, alert.GetProperty("message").GetString());
+    }
+
+    [Theory]
+    [InlineData("Tengo náuseas leves", 1)]
+    [InlineData("tengo un poco de dolor de espalda", 2)]
+    [InlineData("me duele un poco la cabeza", 2)]
+    public async Task Triage_NonEmergencyPhrases_KeepTheirLevel(string content, int expectedUrgency)
+    {
+        var mother = await factory.RegisterAsync("Mother");
+        using var client = factory.CreateClient(mother.AccessToken);
+
+        var triage = await ApiTestFactory.ReadJsonAsync(await client.PostAsJsonAsync("/api/triage", new { content }));
+
+        Assert.Equal(expectedUrgency, triage.GetProperty("urgency").GetInt32());
     }
 
     private async Task PostMeasurementAsync(TestAccount mother, int fetalHeartRateBpm, decimal temperatureCelsius = 36.8m)

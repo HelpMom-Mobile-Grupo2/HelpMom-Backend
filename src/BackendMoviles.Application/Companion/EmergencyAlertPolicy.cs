@@ -9,7 +9,13 @@ namespace BackendMoviles.Application.Companion;
 public static class EmergencyReasons
 {
     public const string RedTelemetry = "la medición de salud salió en rojo";
-    public const string TriageEmergency = "el triage detectó una posible emergencia";
+    public const string TriageEmergencyGeneric = "el asistente detectó una posible emergencia";
+
+    // Tells the partner which alarm sign the assistant detected, so he knows how to act.
+    public static string TriageEmergency(string? alarmSign) =>
+        string.IsNullOrWhiteSpace(alarmSign)
+            ? TriageEmergencyGeneric
+            : $"el asistente detectó una posible emergencia: {alarmSign}";
 }
 
 // Published after a red measurement or an emergency triage has been saved.

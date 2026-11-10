@@ -91,3 +91,31 @@ public sealed class MarkTipDoneHandler(IDailyTipRepository tips, IUnitOfWork uni
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
+
+public sealed record UnmarkTipDoneCommand(Guid PartnerUserId, Guid TipId) : IRequest;
+
+public sealed class UnmarkTipDoneValidator : AbstractValidator<UnmarkTipDoneCommand>
+{
+    public UnmarkTipDoneValidator()
+    {
+        RuleFor(request => request.PartnerUserId).NotEmpty();
+        RuleFor(request => request.TipId).NotEmpty();
+    }
+}
+
+// Lets the partner undo a tip marked as done by mistake today. Idempotent, like marking it.
+public sealed class UnmarkTipDoneHandler(IDailyTipRepository tips, IUnitOfWork unitOfWork)
+    : IRequestHandler<UnmarkTipDoneCommand>
+{
+    public async Task Handle(UnmarkTipDoneCommand request, CancellationToken cancellationToken)
+    {
+        if (await tips.GetByIdAsync(request.TipId, cancellationToken) is null)
+        {
+            throw new KeyNotFoundException("No se encontró el consejo.");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await tips.RemoveCompletionAsync(request.TipId, request.PartnerUserId, today, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+}
