@@ -135,6 +135,7 @@ Todos usan JSON en camelCase y, salvo `auth` y `GET /health`, requieren `Authori
 | GET | `/api/companion/summary` | Partner | Resumen de la gestante, sin valores clínicos |
 | GET | `/api/companion/tips/today` | Partner | 3 tips del día según la semana de gestación |
 | POST | `/api/companion/tips/{id}/done` | Partner | Marca un tip como hecho hoy |
+| DELETE | `/api/companion/tips/{id}/done` | Partner | Desmarca un tip de hoy |
 | POST | `/api/alerts` | Mother | Envía una alerta rápida "Pasa la Voz" |
 | GET | `/api/alerts?status=pending\|all` | Mother, Partner | Alertas del grupo (`all` por defecto) |
 | POST | `/api/alerts/{id}/respond` | Partner | Responde una alerta |

@@ -203,6 +203,24 @@ public sealed class CompanionTests(ApiTestFactory factory) : IClassFixture<ApiTe
             .EnumerateArray().ToArray();
         Assert.True(refreshed.Single(tip => tip.GetProperty("id").GetGuid() == tipId).GetProperty("done").GetBoolean());
         Assert.Equal(2, refreshed.Count(tip => !tip.GetProperty("done").GetBoolean()));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/companion/tips/{tipId}/done")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/companion/tips/{tipId}/done")).StatusCode);
+
+        var undone = (await ApiTestFactory.ReadJsonAsync(await client.GetAsync("/api/companion/tips/today")))
+            .EnumerateArray().ToArray();
+        Assert.All(undone, tip => Assert.False(tip.GetProperty("done").GetBoolean()));
+    }
+
+    [Fact]
+    public async Task UnmarkTipDone_WithUnknownTip_ReturnsNotFound()
+    {
+        var partner = await factory.RegisterAsync("Partner");
+        using var client = factory.CreateClient(partner.AccessToken);
+
+        var response = await client.DeleteAsync($"/api/companion/tips/{Guid.NewGuid()}/done");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

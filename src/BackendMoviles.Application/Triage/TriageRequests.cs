@@ -29,15 +29,44 @@ public sealed class SendTriageMessageHandler(
     IPublisher publisher)
     : IRequestHandler<SendTriageMessageCommand, TriageConversationDto>
 {
-    private static readonly string[] EmergencyTerms = Normalize(
+    // Each alarm sign matches when every word of any of its patterns appears in the message.
+    // Words are stems ("sangr" matches "sangrado", "sangrando"), so similar phrasings also match.
+    private static readonly AlarmSign[] AlarmSigns =
     [
-        "sangrado abundante", "no puedo respirar", "dificultad para respirar",
-        "convulsiones", "desmayo", "dolor intenso", "se mueve menos",
-        "me estoy desangrando", "rompí fuente", "no siento al bebé",
-        "dolor muy fuerte", "visión borrosa", "me desmayé"
-    ]);
+        new("sangrado abundante",
+            ["desangr"], ["hemorrag"], ["sangr", "much"], ["sangr", "abundant"],
+            ["sangr", "bastante"], ["sangr", "demasiad"], ["sangr", "no para"], ["sangr", "fuerte"],
+            ["sangr", "chorro"], ["sangr", "coagulo"]),
+        new("dificultad para respirar",
+            ["no puedo respirar"], ["respir", "dificil"], ["respir", "cuesta"], ["respir", "dificultad"],
+            ["falta", "aire"], ["me ahogo"], ["sin aire"], ["no me entra aire"]),
+        new("convulsiones",
+            ["convuls"], ["ataque", "temblor"]),
+        new("desmayo o pérdida de conciencia",
+            ["desmay"], ["perdi el conocimiento"], ["perdi la conciencia"], ["me voy a caer", "mare"]),
+        new("dolor muy intenso",
+            ["dolor", "intens"], ["dolor", "fuerte"], ["dolor", "insoportable"], ["dolor", "terrible"],
+            ["dolor", "horrible"], ["dolor", "much"], ["dolor", "demasiad"], ["duele", "much"],
+            ["duele", "demasiad"], ["duele", "horrible"], ["duele", "fuerte"], ["no aguanto", "dolor"]),
+        new("el bebé se mueve menos",
+            ["se mueve menos"], ["no se mueve"], ["no siento al bebe"], ["no siento a mi bebe"],
+            ["no siento", "patad"], ["no siento", "bebe"], ["no lo siento mover"], ["no la siento mover"],
+            ["dejo de moverse"], ["ya no se mueve"]),
+        new("posible ruptura de fuente",
+            ["rompi fuente"], ["rompio", "fuente"], ["rompi la fuente"], ["sale", "liquido"],
+            ["perdida", "liquido"], ["se me rompio"], ["moje", "liquido"]),
+        new("visión borrosa o dolor de cabeza fuerte",
+            ["vision borrosa"], ["veo borroso"], ["veo lucecitas"], ["veo puntos"], ["cabeza", "fuerte"],
+            ["cabeza", "much"], ["cabeza", "intens"], ["cabeza", "insoportable"]),
+        new("fiebre muy alta",
+            ["fiebre", "alta"], ["fiebre", "muy"], ["fiebre", "39"], ["fiebre", "40"], ["temperatura", "alta"]),
+    ];
 
-    private static readonly string[] CareTeamTerms = Normalize(["fiebre", "dolor", "sangrado", "contracciones"]);
+    private static readonly string[] CareTeamTerms = Normalize(
+    [
+        "fiebre", "dolor", "duele", "sangr", "contracci", "mancha", "vomit", "hinchaz", "hinchad",
+        "ardor", "flujo", "presion", "colico", "calambre"
+    ]);
 
     public async Task<TriageConversationDto> Handle(
         SendTriageMessageCommand request,
@@ -56,7 +85,8 @@ public sealed class SendTriageMessageHandler(
         var now = DateTimeOffset.UtcNow;
         var motherMessage = conversation.AddMessage(MessageAuthor.Mother, request.Content, now);
         unitOfWork.Add(motherMessage);
-        var assessment = Assess(request.Content, now);
+        var sign = DetectAlarmSign(request.Content);
+        var assessment = Assess(request.Content, sign, now);
         conversation.SetAssessment(assessment);
         var assistantMessage = conversation.AddMessage(MessageAuthor.Assistant, assessment.Guidance, now.AddTicks(1));
         unitOfWork.Add(assistantMessage);
@@ -71,7 +101,7 @@ public sealed class SendTriageMessageHandler(
         if (assessment.Urgency == TriageUrgency.Emergency)
         {
             await publisher.Publish(
-                new EmergencyDetected(request.MotherUserId, EmergencyReasons.TriageEmergency),
+                new EmergencyDetected(request.MotherUserId, EmergencyReasons.TriageEmergency(sign?.Label)),
                 cancellationToken);
         }
 
@@ -96,14 +126,21 @@ public sealed class SendTriageMessageHandler(
 
     private static string[] Normalize(string[] terms) => terms.Select(Normalize).ToArray();
 
-    private static TriageAssessment Assess(string content, DateTimeOffset assessedAt)
+    // Returns the first alarm sign found in the message, or null when there is none.
+    public static AlarmSign? DetectAlarmSign(string content)
     {
         var normalized = Normalize(content);
-        if (EmergencyTerms.Any(term => normalized.Contains(term, StringComparison.Ordinal)))
+        return AlarmSigns.FirstOrDefault(sign => sign.Matches(normalized));
+    }
+
+    private static TriageAssessment Assess(string content, AlarmSign? sign, DateTimeOffset assessedAt)
+    {
+        var normalized = Normalize(content);
+        if (sign is not null)
         {
             return TriageAssessment.Create(
                 TriageUrgency.Emergency,
-                "Esta simulación detectó una posible señal de alarma. Contacta ahora a los servicios de emergencia o acude a urgencias. No esperes una respuesta de esta aplicación.",
+                $"Esta simulación detectó una posible señal de alarma ({sign.Label}). Contacta ahora a los servicios de emergencia o acude a urgencias. Tu acompañante fue avisado. No esperes una respuesta de esta aplicación.",
                 assessedAt);
         }
 
@@ -162,4 +199,22 @@ public sealed class GetTriageConversationHandler(ITriageConversationRepository c
         var conversation = await conversations.GetByIdAsync(request.Id, cancellationToken);
         return conversation?.ToDto();
     }
+}
+
+public sealed class AlarmSign
+{
+    private readonly string[][] patterns;
+
+    public AlarmSign(string label, params string[][] patterns)
+    {
+        Label = label;
+        this.patterns = patterns
+            .Select(words => words.Select(SendTriageMessageHandler.Normalize).ToArray())
+            .ToArray();
+    }
+
+    public string Label { get; }
+
+    public bool Matches(string normalizedText) =>
+        patterns.Any(words => words.All(word => normalizedText.Contains(word, StringComparison.Ordinal)));
 }
